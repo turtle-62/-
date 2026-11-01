@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지구 구하기: 탄소 탐험대</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Jua, Noto Sans KR) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        jua: ['Jua', 'sans-serif'],
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    },
+                    colors: {
+                        climate: {
+                            green: '#10B981',
+                            darkgreen: '#047857',
+                            ice: '#E0F2FE',
+                            ocean: '#0284C7',
+                            warning: '#F59E0B',
+                            danger: '#EF4444',
+                            dark: '#0F172A'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2b38 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+
+        /* custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0b7285;
+            border-radius: 4px;
+        }
+
+        /* Shake animation for danger */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* Pulse glow */
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.8); }
+        }
+        .glow-green {
+            animation: pulseGlow 2s infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header / Navigation Bar -->
+    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-700 sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 text-xl font-bold">
+                    🌍
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-jua text-emerald-400 tracking-wide">지구 구하기: 탄소 탐험대</h1>
+                    <p class="text-xs text-slate-400">25차시 기후변화 원인과 결과 알기 퀘스트</p>
+                </div>
+            </div>
+            <button id="reset-btn" class="text-xs md:text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right"></i> 다시 시작
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
+
+        <!-- Top Status Card: Planet & Temperature Status -->
+        <section class="bg-slate-800/90 border border-slate-700 rounded-3xl p-5 md:p-6 shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <!-- Background Ice Grid Decor -->
+            <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl select-none">❄️</div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                <!-- Planet Image & Polar Bear State -->
+                <div class="flex flex-col items-center text-center space-y-2">
+                    <div id="bear-avatar-container" class="relative w-28 h-28 flex items-center justify-center bg-slate-900/60 rounded-full border-4 border-cyan-400/50 shadow-inner">
+                        <span id="bear-emoji" class="text-6xl transition-all duration-500 transform hover:scale-110">🐻‍❄️</span>
+                        <div id="ice-melt-badge" class="absolute -bottom-2 bg-cyan-900/90 border border-cyan-400 text-cyan-200 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                            얼음섬 상태: 🧊 무사함
+                        </div>
+                    </div>
+                    <span id="bear-status-text" class="text-sm font-bold text-cyan-300 font-jua">"오늘 너의 선택이 나의 집을 결정해!"</span>
+                </div>
+
+                <!-- Temperature & Gauge Bar -->
+                <div class="md:col-span-2 space-y-3">
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-sm font-semibold text-slate-300">지구 체온 상승도</span>
+                        <span id="temp-display" class="font-jua text-2xl md:text-3xl text-emerald-400 font-bold transition-colors duration-500">+0.00 °C</span>
+                    </div>
+
+                    <!-- Progress Gauge Bar -->
+                    <div class="w-full h-5 bg-slate-900 rounded-full p-1 border border-slate-700 relative overflow-hidden">
+                        <div id="temp-bar" class="h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500 rounded-full transition-all duration-500 w-0"></div>
+                    </div>
+
+                    <!-- Summary Stats Grid -->
+        <div class="grid grid-cols-2 gap-3 pt-2">
+            <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-700/50">
+                <p class="text-xs text-slate-400">총 탄소 배출량</p>
+                <p id="total-co2" class="font-jua text-xl text-emerald-300">0.00 <span class="text-xs font-sans text-slate-400">kg CO₂</span></p>
+            </div>
+            <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-700/50">
+                <p class="text-xs text-slate-400">지구 위기 단계</p>
+                <p id="risk-level" class="font-jua text-xl text-emerald-400">안전 🌿</p>
+            </div>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- NEW: AI Real-time Diagnostic Chatbot Section -->
+<section class="bg-slate-800/80 border border-emerald-500/40 rounded-3xl p-5 md:p-6 shadow-2xl space-y-4 relative overflow-hidden backdrop-blur-md">
+    <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-xl">
+                🤖
+            </div>
+            <div>
+                <h2 class="text-lg md:text-xl font-jua text-emerald-400 flex items-center gap-2">
+                    지구 지킴이 AI 실시간 진단 챗봇
+                </h2>
+                <p class="text-xs text-slate-400">"오늘 한 일을 AI에게 직접 자유롭게 말해봐! 실시간으로 진단해 줄게."</p>
+            </div>
+        </div>
+        <span class="text-xs bg-emerald-950 border border-emerald-500/50 text-emerald-300 px-2.5 py-1 rounded-full font-bold animate-pulse">
+            ● AI 준비완료
+        </span>
+    </div>
+
+    <!-- Chat Message Container -->
+    <div id="chat-box" class="h-64 overflow-y-auto bg-slate-900/90 border border-slate-700/70 rounded-2xl p-4 space-y-3 font-sans text-sm">
+        <!-- Default Welcome Message -->
+        <div class="flex gap-2.5 items-start">
+            <div class="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-sm shrink-0">🤖</div>
+            <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl rounded-tl-none max-w-[85%] text-slate-200 leading-relaxed shadow-sm">
+                안녕! 나는 지구를 지키는 **AI 지구 지킴이**야! 🌍<br>
+                오늘 너의 하루 일상을 자유롭게 이야기해 줘. (예: "오늘 학교 올 때 자동차 타고 왔고, 음료수 먹고 플라스틱 컵 버렸어!")
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Input Form -->
+    <form id="chat-form" class="flex gap-2">
+        <input type="text" id="chat-input" placeholder="오늘 한 일이나 궁금한 점을 적고 AI 진단을 받아보세요..." 
+               class="flex-grow bg-slate-900 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-400 placeholder:text-slate-500 transition">
+        <button type="submit" id="chat-send-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-jua px-5 py-3 rounded-2xl transition flex items-center gap-1.5 shrink-0 shadow-lg">
+            <span>진단하기</span>
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+        </button>
+    </form>
+</section>
+
+<!-- Quest Section: Select Daily Activities -->
+        <section class="bg-slate-800/70 border border-slate-700 rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-700/80 pb-3">
+                <div>
+                    <h2 class="text-lg md:text-xl font-jua text-emerald-400 flex items-center gap-2">
+                        <span>🎯</span> 오늘 나의 하루 행동 체크 퀘스트
+                    </h2>
+                    <p class="text-xs text-slate-400">오늘 내가 한 행동들을 하나씩 클릭해 탄소 배출량을 확인해 보자!</p>
+                </div>
+                <!-- Category Filters -->
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <button data-filter="all" class="filter-btn active-filter bg-emerald-600 text-white px-3 py-1 rounded-xl transition">전체</button>
+                    <button data-filter="transport" class="filter-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-xl transition">🚗 이동</button>
+                    <button data-filter="food" class="filter-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-xl transition">🍱 식사</button>
+                    <button data-filter="energy" class="filter-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-xl transition">⚡ 에너지를/기기</button>
+                    <button data-filter="custom" class="filter-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-xl transition">✏️ 직접 입력</button>
+                </div>
+            </div>
+
+            <!-- Activities Cards Grid -->
+            <div id="activity-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                <!-- Generated dynamically via JS -->
+            </div>
+
+            <!-- Custom Input Form (Hidden by default or embedded) -->
+            <div id="custom-input-card" class="hidden bg-slate-900/80 border border-dashed border-emerald-500/50 p-4 rounded-2xl space-y-3">
+                <h3 class="text-sm font-bold text-emerald-300 flex items-center gap-2 font-jua">
+                    <span>✨</span> 목록에 없는 내 특별한 행동 직접 입력하기
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input type="text" id="custom-name" placeholder="예: 미니선풍기 2시간 쐬기" class="bg-slate-800 border border-slate-700 text-sm rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-400">
+                    <input type="number" step="0.1" id="custom-co2" placeholder="탄소 배출량 (kg)" class="bg-slate-800 border border-slate-700 text-sm rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-400">
+                    <button id="add-custom-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-jua text-sm rounded-xl py-2 px-4 transition">
+                        추가하기 ➕
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400">* 탄소 배출량을 잘 모를 땐 대략 0.2~1.5kg 사이로 적어봐도 좋아요!</p>
+            </div>
+        </section>
+
+        <!-- Real-world Impact Visualizer Section -->
+        <section class="bg-slate-800/70 border border-slate-700 rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
+            <div>
+                <h2 class="text-lg md:text-xl font-jua text-cyan-400 flex items-center gap-2">
+                    <span>🔍</span> 내가 배출한 탄소, 초등학생 눈높이 비교!
+                </h2>
+                <p class="text-xs text-slate-400">어려운 1kg 탄소 배출? 실생활 속 예시로 쉽게 이해해 보아요.</p>
+            </div>
+
+            <!-- Comparison Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Example 1: Trees needed -->
+                <div class="bg-slate-900/70 border border-slate-700/80 p-4 rounded-2xl text-center space-y-2 relative overflow-hidden group hover:border-emerald-500/50 transition">
+                    <div class="text-4xl group-hover:scale-110 transition-transform">🌲</div>
+                    <p class="text-xs text-slate-400 font-semibold">흡수하려면 필요한 소나무</p>
+                    <p id="tree-count" class="font-jua text-2xl text-emerald-400">0 <span class="text-sm text-slate-300 font-sans">그루 (1년)</span></p>
+                    <p class="text-[11px] text-slate-500">소나무 1그루는 1년에 약 6.6kg의 CO₂를 흡수해요.</p>
+                </div>
+
+                <!-- Example 2: Phone Charging -->
+                <div class="bg-slate-900/70 border border-slate-700/80 p-4 rounded-2xl text-center space-y-2 relative overflow-hidden group hover:border-cyan-500/50 transition">
+                    <div class="text-4xl group-hover:scale-110 transition-transform">📱</div>
+                    <p class="text-xs text-slate-400 font-semibold">스마트폰 충전 횟수 환산</p>
+                    <p id="phone-count" class="font-jua text-2xl text-cyan-400">0 <span class="text-sm text-slate-300 font-sans">회 분량</span></p>
+                    <p class="text-[11px] text-slate-500">스마트폰 1회 완충 시 약 0.01kg의 탄소가 생겨요.</p>
+                </div>
+
+                <!-- Example 3: Car Mileage -->
+                <div class="bg-slate-900/70 border border-slate-700/80 p-4 rounded-2xl text-center space-y-2 relative overflow-hidden group hover:border-rose-500/50 transition">
+                    <div class="text-4xl group-hover:scale-110 transition-transform">🚘</div>
+                    <p class="text-xs text-slate-400 font-semibold">휘발유 자동차 주행거리</p>
+                    <p id="car-dist" class="font-jua text-2xl text-rose-400">0 <span class="text-sm text-slate-300 font-sans">km 이동</span></p>
+                    <p class="text-[11px] text-slate-500">승용차로 약 1km 달릴 때 0.21kg의 탄소가 나와요.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Selected History / Log Section -->
+<section class="bg-slate-800/50 border border-slate-700/60 rounded-3xl p-5 md:p-6 space-y-3">
+    <h2 class="text-md font-jua text-slate-300 flex items-center justify-between">
+        <span>📋 내가 오늘 선택한 행동 목록 (<span id="selected-count">0</span>개)</span>
+        <button id="clear-all-btn" class="text-xs text-slate-400 hover:text-rose-400 underline">전체 비우기</button>
+    </h2>
+
+    <div id="selected-log" class="flex flex-wrap gap-2 min-h-[48px] p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+        <p id="empty-log-msg" class="text-xs text-slate-500 m-auto">위 퀘스트에서 오늘 한 행동을 클릭하여 추가해 보세요!</p>
+    </div>
+</section>
+
+<!-- NEW: Lesson Summary & Environmental Pledge Card Section -->
+<section class="bg-gradient-to-br from-slate-800 to-slate-900 border border-cyan-500/40 rounded-3xl p-5 md:p-6 shadow-2xl space-y-5">
+    <div class="border-b border-slate-700 pb-3">
+        <h2 class="text-lg md:text-xl font-jua text-cyan-300 flex items-center gap-2">
+            <span>📜</span> 25차시 마무리: 나의 느낀 점 & 지구 수호대 다짐 카드
+        </h2>
+        <p class="text-xs text-slate-400">탄소 배출 진단을 마치고 오늘 수업에서 배운 점과 나의 약속을 적어보세요.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Input Form -->
+        <div class="space-y-4 bg-slate-900/70 p-4 rounded-2xl border border-slate-700/60">
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1.5 font-jua">👦 탐험대원 이름</label>
+                <input type="text" id="pledge-name" placeholder="이름을 입력하세요" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-400">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1.5 font-jua">💡 탄소 배출량을 확인하고 느낀 점</label>
+                <textarea id="pledge-reflection" rows="3" placeholder="예: 내가 무심코 한 행동들이 북극곰의 얼음을 녹이고 있었다니 미안했다..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 resize-none"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1.5 font-jua">🌱 내가 실천할 한 가지 다짐 (약속)</label>
+                <input type="text" id="pledge-promise" placeholder="예: 텀블러 꼭 챙겨 다니기 / 급식 남기지 않기" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-400">
+            </div>
+
+            <button id="generate-card-btn" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-jua py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-md">
+                <span>지구 수호대 발급 카드 생성하기</span> 🪪
+            </button>
+        </div>
+
+        <!-- Generated Preview Card -->
+        <div class="flex flex-col justify-center items-center">
+            <div id="pledge-card" class="w-full max-w-sm bg-gradient-to-br from-emerald-900/90 via-slate-900 to-cyan-950 border-2 border-emerald-400/80 rounded-2xl p-5 shadow-2xl relative overflow-hidden space-y-4">
+                <!-- Watermark Decor -->
+                <div class="absolute -right-6 -bottom-6 text-8xl opacity-10 select-none">🛡️</div>
+                
+                <div class="flex justify-between items-center border-b border-emerald-500/40 pb-2">
+                    <span class="text-xs font-bold text-emerald-400 font-jua tracking-wider">OFFICIAL PLEDGE CARD</span>
+                    <span class="text-[10px] bg-emerald-950 border border-emerald-400/50 text-emerald-300 px-2 py-0.5 rounded-full">지구 수호대 임명장</span>
+                </div>
+
+                <div class="text-center space-y-1">
+                    <div class="text-4xl">🦸‍♂️🌱</div>
+                    <h3 id="card-name-display" class="font-jua text-xl text-white">OOO 대원</h3>
+                    <p class="text-[11px] text-cyan-300">오늘의 지구 체온 기여도 진단 완료</p>
+                </div>
+
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div>
+                        <span class="text-slate-400 font-bold font-jua block">💬 느낀 점</span>
+                        <p id="card-reflection-display" class="text-slate-200 text-[11px] leading-relaxed italic">"지구를 구하기 위해 작은 행동부터 시작해야겠다고 느꼈습니다."</p>
+                    </div>
+                    <div class="border-t border-slate-800 pt-2">
+                        <span class="text-emerald-400 font-bold font-jua block">⭐ 나의 지구 수호 다짐</span>
+                        <p id="card-promise-display" class="text-emerald-200 font-semibold text-xs">"가까운 거리는 항상 걸어 다니겠습니다!"</p>
+                    </div>
+                </div>
+
+                <div class="text-center pt-1">
+                    <p class="text-[10px] text-slate-500">25차시 기후변화 수업 탄소 감축 서명 완료</p>
+                </div>
+            </div>
+            
+            <p class="text-[11px] text-slate-400 mt-3 text-center">💡 이 카드를 캡처하거나 클래스용 디지털 게시판(Padlet/캔바)에 공유해 보세요!</p>
+        </div>
+    </div>
+</section>
+
+</main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-800 py-4 px-4 text-center text-xs text-slate-500 mt-auto">
+        <p>초등학교 사회 25차시 '기후변화의 원인과 결과 알기' 연계 에듀테크 프로그램</p>
+        <p class="mt-1">지구온난화 극복을 위해 일상 속 소중한 실천을 시작해 봅시다! 🌱</p>
+    </footer>
+
+    <!-- Result / Iceberg Melted Warning Modal -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border-2 border-slate-700 rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl relative animate-shake">
+            <div id="modal-icon" class="text-6xl">🚨</div>
+            <h3 id="modal-title" class="text-2xl font-jua text-rose-400">경고! 지구 온도 급상승</h3>
+            <p id="modal-desc" class="text-sm text-slate-300 leading-relaxed">
+                지구의 온도가 1.5°C 이상 상승했습니다! 북극의 얼음이 녹아 내려 북극곰이 살 터전을 잃어가고 있어요. 
+            </p>
+
+            <div class="bg-slate-900/80 p-4 rounded-2xl text-left border border-slate-700 space-y-2">
+                <p class="text-xs text-emerald-400 font-bold">💡 실천 미션! 지구를 식히는 3가지 팁:</p>
+                <ul class="text-xs text-slate-300 space-y-1 list-disc list-inside">
+                    <li>가까운 거리는 걸어 다니기 🚲</li>
+                    <li>급식 잔반 남기지 않기 🥣</li>
+                    <li>안 쓰는 플러그 뽑아두기 🔌</li>
+                </ul>
+            </div>
+
+            <button id="close-modal-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-jua text-base py-2.5 rounded-xl transition shadow-lg">
+                북극곰을 위해 다시 노력하기 💪
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Preset Activities Data
+        const activitiesData = [
+            // Transport
+            { id: 't1', category: 'transport', icon: '🚗', name: '자가용(승용차) 타고 등교', co2: 1.2, desc: '주행 5km 기준' },
+            { id: 't2', category: 'transport', icon: '🚌', name: '시내버스 타고 이동', co2: 0.4, desc: '승용차의 1/3 배출' },
+            { id: 't3', category: 'transport', icon: '🚲', name: '자전거/도보 등교', co2: 0.0, desc: '탄소 배출 0kg! 최고' },
+            
+            // Food
+            { id: 'f1', category: 'food', icon: '🥩', name: '소고기 반찬 먹기', co2: 2.5, desc: '생산 과정 탄소 다량 발생' },
+            { id: 'f2', category: 'food', icon: '🍗', name: '닭고기/돼지고기 식사', co2: 0.9, desc: '적당한 탄소 배출' },
+            { id: 'f3', category: 'food', icon: '🥗', name: '채식 위주 식사하기', co2: 0.2, desc: '지구를 지키는 건강 식단' },
+            { id: 'f4', category: 'food', icon: '🍱', name: '급식 잔반(음식물) 남기기', co2: 0.8, desc: '음식물 쓰레기 처리 탄소' },
+
+            // Energy / Daily Electronics
+            { id: 'e1', category: 'energy', icon: '📱', name: '스마트폰 3시간 사용', co2: 0.15, desc: '데이터 센터 에너지 포함' },
+            { id: 'e2', category: 'energy', icon: '🖥️', name: '컴퓨터/게임 2시간 하기', co2: 0.35, desc: '전기 에너지 소비' },
+            { id: 'e3', category: 'energy', icon: '❄️', name: '에어컨 3시간 틀어놓기', co2: 1.4, desc: '여름철 전력 다량 사용' },
+            { id: 'e4', category: 'energy', icon: '🥤', name: '일회용 컵/플라스틱 쓰기', co2: 0.3, desc: '생산 및 폐기 탄소' },
+            { id: 'e5', category: 'energy', icon: '🔌', name: '미사용 플러그 켜두기', co2: 0.1, desc: '대기 전력 낭비' }
+        ];
+
+        // State Store
+        let selectedActivities = [];
+        let currentFilter = 'all';
+
+        // DOM Element Selectors
+        const activityGrid = document.getElementById('activity-grid');
+        const customInputCard = document.getElementById('custom-input-card');
+        const totalCo2El = document.getElementById('total-co2');
+        const tempDisplayEl = document.getElementById('temp-display');
+        const tempBarEl = document.getElementById('temp-bar');
+        const riskLevelEl = document.getElementById('risk-level');
+        const bearEmojiEl = document.getElementById('bear-emoji');
+        const bearStatusTextEl = document.getElementById('bear-status-text');
+        const iceMeltBadgeEl = document.getElementById('ice-melt-badge');
+        
+        // Impact visualizer counters
+        const treeCountEl = document.getElementById('tree-count');
+        const phoneCountEl = document.getElementById('phone-count');
+        const carDistEl = document.getElementById('car-dist');
+
+        const selectedLogEl = document.getElementById('selected-log');
+        const emptyLogMsg = document.getElementById('empty-log-msg');
+        const selectedCountEl = document.getElementById('selected-count');
+
+        // Modal
+        const modalOverlay = document.getElementById('modal-overlay');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        let modalTriggered = false;
+
+        // --- NEW: AI Chatbot & Pledge Logic ---
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+
+        // Smart Emulated Responses Fallback for Gemini API when Key is not provided
+        function getEmulatedAiResponse(userMsg) {
+            const msg = userMsg.toLowerCase();
+            let reply = "";
+            let estimateCo2 = 0;
+
+            if (msg.includes("차") || msg.includes("자동차") || msg.includes("승용차") || msg.includes("택시")) {
+                reply = "🚘 자가용으로 이동했구나! 승용차는 5km 이동할 때 약 1.2kg의 탄소를 배출해. 다음에는 가까운 거리는 걸어가거나 버스(0.4kg)를 이용해 보는 건 어떨까?";
+                estimateCo2 = 1.2;
+            } else if (msg.includes("고기") || msg.includes("소고기") || msg.includes("돼지고기")) {
+                reply = "🥩 고기 위주의 식사는 생산 과정에서 꽤 많은 탄소(약 1.5~2.5kg)가 발생해! 일주일에 하루쯤은 지구를 위해 맛있는 채식 식단에 도전해 보자!";
+                estimateCo2 = 2.0;
+            } else if (msg.includes("게임") || msg.includes("스마트폰") || msg.includes("컴퓨터") || msg.includes("티비")) {
+                reply = "🎮 전자기기를 즐겁게 썼구나! 전자기기 사용은 대략 0.3~0.5kg의 탄소를 만들어내. 쓰지 않을 때는 플러그를 꾹 뽑아두는 센스도 잊지 마!";
+                estimateCo2 = 0.4;
+            } else if (msg.includes("걸어") || msg.includes("자전거") || msg.includes("텀블러") || msg.includes("채식")) {
+                reply = "🌟 우와! 정말 대단해! 걸어서 이동하거나 친환경 습관을 지키면 탄소 배출이 0kg에 가까워! 북극곰이 너에게 엄지척을 보내고 있어! 🐻‍❄️👍";
+                estimateCo2 = 0.0;
+            } else {
+                reply = `🌱 "${userMsg}" 행동을 분석해 보았어! 일상생활에서 소소하게 배출되는 탄소량이 약 0.5kg 정도 예상돼. 작지만 소중한 친환경 실천으로 지구 온도를 높이지 않도록 함께 노력하자!`;
+                estimateCo2 = 0.5;
+            }
+
+            return { reply, estimateCo2 };
+        }
+
+        // Call Gemini API or Emulated Fallback
+        async function fetchGeminiResponse(userMessage) {
+            const systemPrompt = "너는 초등학생 대상 '지구 지킴이 AI 챗봇'이야. 아이들이 오늘 한 행동(이동수단, 음식, 전자기기 등)을 말하면, 초등학생 눈높이에 맞게 유머러스하고 친근하게 탄소 배출 영향과 격려의 한마디를 2~3줄로 재치 있게 설명해 줘.";
+            const apiKey = ""; // API Key handled dynamically by runtime environment
+
+            if (!apiKey) {
+                // Return emulated intelligent response
+                await new Promise(r => setTimeout(r, 600)); // Smooth typing simulation delay
+                return getEmulatedAiResponse(userMessage).reply;
+            }
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userMessage }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+                const data = await response.json();
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                return aiText || getEmulatedAiResponse(userMessage).reply;
+            } catch (err) {
+                return getEmulatedAiResponse(userMessage).reply;
+            }
+        }
+
+        // Handle Chat Submit
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            // Render User Bubble
+            const userBubble = document.createElement('div');
+            userBubble.className = 'flex gap-2.5 items-start justify-end';
+            userBubble.innerHTML = `
+                <div class="bg-emerald-600 text-white p-3 rounded-2xl rounded-tr-none max-w-[85%] leading-relaxed shadow-sm">
+                    ${escapeHtml(text)}
+                </div>
+                <div class="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-sm shrink-0">👦</div>
+            `;
+            chatBox.appendChild(userBubble);
+            chatInput.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Render Typing Indicator
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'flex gap-2.5 items-start id-loading';
+            loadingBubble.innerHTML = `
+                <div class="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-sm shrink-0">🤖</div>
+                <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl rounded-tl-none text-slate-400 text-xs italic animate-pulse">
+                    지구 지킴이 AI가 탄소 배출량을 분석 중입니다... 🔍
+                </div>
+            `;
+            chatBox.appendChild(loadingBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Get Response
+            const reply = await fetchGeminiResponse(text);
+
+            // Remove Loading & Append AI Reply
+            loadingBubble.remove();
+            const aiBubble = document.createElement('div');
+            aiBubble.className = 'flex gap-2.5 items-start';
+            aiBubble.innerHTML = `
+                <div class="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-sm shrink-0">🤖</div>
+                <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl rounded-tl-none max-w-[85%] text-slate-200 leading-relaxed shadow-sm">
+                    ${escapeHtml(reply)}
+                </div>
+            `;
+            chatBox.appendChild(aiBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        // Escaping HTML Helper
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Pledge Card Generation Logic
+        document.getElementById('generate-card-btn').addEventListener('click', () => {
+            const name = document.getElementById('pledge-name').value.trim() || '탄소탐험대';
+            const reflection = document.getElementById('pledge-reflection').value.trim() || '오늘 탄소 배출량을 알아보고 지구 환경의 중요성을 배웠습니다.';
+            const promise = document.getElementById('pledge-promise').value.trim() || '일상생활 속 친환경 수호 행동을 실천하겠습니다!';
+
+            document.getElementById('card-name-display').textContent = `${name} 대원`;
+            document.getElementById('card-reflection-display').textContent = `"${reflection}"`;
+            document.getElementById('card-promise-display').textContent = `"${promise}"`;
+
+            // Card highlight animation
+            const card = document.getElementById('pledge-card');
+            card.classList.add('animate-shake');
+            setTimeout(() => card.classList.remove('animate-shake'), 500);
+        });
+
+        // Render Activity Cards based on filter
+        function renderActivities() {
+            activityGrid.innerHTML = '';
+
+            if (currentFilter === 'custom') {
+                customInputCard.classList.remove('hidden');
+            } else {
+                customInputCard.classList.add('hidden');
+            }
+
+            const filtered = activitiesData.filter(act => {
+                if (currentFilter === 'all') return true;
+                return act.category === currentFilter;
+            });
+
+            filtered.forEach(act => {
+                const isSelected = selectedActivities.some(item => item.id === act.id);
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+                    isSelected 
+                    ? 'bg-emerald-950/80 border-emerald-400 shadow-lg shadow-emerald-950/50 scale-[1.02]' 
+                    : 'bg-slate-900/60 border-slate-700/70 hover:border-slate-500 hover:bg-slate-900'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-3xl">${act.icon}</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-100">${act.name}</h4>
+                            <p class="text-[11px] text-slate-400">${act.desc}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold font-jua ${act.co2 === 0 ? 'text-emerald-400' : 'text-amber-400'}">
+                            +${act.co2} kg
+                        </span>
+                        <div class="mt-1">
+                            <span class="text-xs ${isSelected ? 'text-emerald-400 font-bold' : 'text-slate-500'}">
+                                ${isSelected ? '선택됨 ✔' : '클릭'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => toggleActivity(act));
+                activityGrid.appendChild(card);
+            });
+        }
+
+        // Toggle Selection
+        function toggleActivity(act) {
+            const index = selectedActivities.findIndex(item => item.id === act.id);
+            if (index > -1) {
+                selectedActivities.splice(index, 1);
+            } else {
+                selectedActivities.push(act);
+            }
+            updateCalculator();
+            renderActivities();
+        }
+
+        // Add Custom Activity
+        document.getElementById('add-custom-btn').addEventListener('click', () => {
+            const nameInput = document.getElementById('custom-name');
+            const co2Input = document.getElementById('custom-co2');
+
+            const name = nameInput.value.trim();
+            const co2 = parseFloat(co2Input.value);
+
+            if (!name || isNaN(co2) || co2 < 0) {
+                alert('올바른 행동 이름과 0 이상의 탄소 배출량을 입력해주세요!');
+                return;
+            }
+
+            const customAct = {
+                id: 'custom-' + Date.now(),
+                category: 'custom',
+                icon: '✏️',
+                name: name,
+                co2: co2,
+                desc: '나만의 직접 입력 행동'
+            };
+
+            selectedActivities.push(customAct);
+            nameInput.value = '';
+            co2Input.value = '';
+
+            updateCalculator();
+            renderActivities();
+        });
+
+        // Update Total Stats & Visual Impacts
+        function updateCalculator() {
+            // 1. Total CO2 Calculation
+            const totalCo2 = selectedActivities.reduce((sum, item) => sum + item.co2, 0);
+            totalCo2El.innerHTML = `${totalCo2.toFixed(2)} <span class="text-xs font-sans text-slate-400">kg CO₂</span>`;
+
+            // 2. Temperature Increase Calculation (Rough Educational Formula: 1kg CO2 ~ +0.25°C in game)
+            const tempIncrease = totalCo2 * 0.25;
+            tempDisplayEl.textContent = `+${tempIncrease.toFixed(2)} °C`;
+
+            // Gauge Bar percentage (Max limit 3.0°C)
+            const percentage = Math.min((tempIncrease / 3.0) * 100, 100);
+            tempBarEl.style.width = `${percentage}%`;
+
+            // 3. Visual Comparisons
+            // Trees: 1 tree absorbs ~6.6kg/year -> (totalCo2 / 6.6)
+            const treesNeeded = (totalCo2 / 6.6).toFixed(1);
+            treeCountEl.innerHTML = `${treesNeeded} <span class="text-sm text-slate-300 font-sans">그루 (1년)</span>`;
+
+            // Phone charges: 0.01kg per charge
+            const phoneCharges = Math.round(totalCo2 / 0.01);
+            phoneCountEl.innerHTML = `${phoneCharges.toLocaleString()} <span class="text-sm text-slate-300 font-sans font-normal">회 분량</span>`;
+
+            // Car Mileage: 0.21kg per km
+            const carMileage = (totalCo2 / 0.21).toFixed(1);
+            carDistEl.innerHTML = `${carMileage} <span class="text-sm text-slate-300 font-sans font-normal">km 이동</span>`;
+
+            // 4. Planet State & Bear Status Update
+            updatePlanetState(tempIncrease);
+
+            // 5. Update Selected Log UI
+            updateLogUI();
+        }
+
+        // Update Planet & Polar Bear Reactions
+        function updatePlanetState(temp) {
+            if (temp === 0) {
+                riskLevelEl.textContent = '안전 🌿';
+                riskLevelEl.className = 'font-jua text-xl text-emerald-400';
+                tempDisplayEl.className = 'font-jua text-2xl md:text-3xl text-emerald-400 font-bold';
+                bearEmojiEl.textContent = '🐻‍❄️';
+                bearStatusTextEl.textContent = '"오늘 너의 선택 덕분에 빙하가 무사해!"';
+                iceMeltBadgeEl.textContent = '얼음섬 상태: 🧊 단단함';
+                iceMeltBadgeEl.className = 'absolute -bottom-2 bg-emerald-900/90 border border-emerald-400 text-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold';
+            } else if (temp < 1.0) {
+                riskLevelEl.textContent = '주의 ⚠️';
+                riskLevelEl.className = 'font-jua text-xl text-amber-400';
+                tempDisplayEl.className = 'font-jua text-2xl md:text-3xl text-amber-400 font-bold';
+                bearEmojiEl.textContent = '😰';
+                bearStatusTextEl.textContent = '"지구가 조금씩 더워지고 있어..."';
+                iceMeltBadgeEl.textContent = '얼음섬 상태: 💧 조금 녹음';
+                iceMeltBadgeEl.className = 'absolute -bottom-2 bg-amber-900/90 border border-amber-400 text-amber-200 text-xs px-2.5 py-0.5 rounded-full font-bold';
+            } else if (temp < 2.0) {
+                riskLevelEl.textContent = '위험 🚨';
+                riskLevelEl.className = 'font-jua text-xl text-orange-500';
+                tempDisplayEl.className = 'font-jua text-2xl md:text-3xl text-orange-400 font-bold';
+                bearEmojiEl.textContent = '🏊‍♂️';
+                bearStatusTextEl.textContent = '"얼음이 너무 작아졌어! 수영을 해야 해..."';
+                iceMeltBadgeEl.textContent = '얼음섬 상태: 🌊 대부분 녹음';
+                iceMeltBadgeEl.className = 'absolute -bottom-2 bg-orange-900/90 border border-orange-400 text-orange-200 text-xs px-2.5 py-0.5 rounded-full font-bold';
+
+                // Trigger Modal once when crossing 1.5°C threshold
+                if (temp >= 1.5 && !modalTriggered) {
+                    showModal();
+                    modalTriggered = true;
+                }
+            } else {
+                riskLevelEl.textContent = '대위기 💥';
+                riskLevelEl.className = 'font-jua text-xl text-rose-500 animate-pulse';
+                tempDisplayEl.className = 'font-jua text-2xl md:text-3xl text-rose-500 font-bold';
+                bearEmojiEl.textContent = '😭';
+                bearStatusTextEl.textContent = '"도와줘! 살 곳이 없어졌어!"';
+                iceMeltBadgeEl.textContent = '얼음섬 상태: ❌ 빙하 소멸';
+                iceMeltBadgeEl.className = 'absolute -bottom-2 bg-rose-900/90 border border-rose-400 text-rose-200 text-xs px-2.5 py-0.5 rounded-full font-bold';
+            }
+        }
+
+        // Update Log UI
+        function updateLogUI() {
+            selectedLogEl.innerHTML = '';
+            selectedCountEl.textContent = selectedActivities.length;
+
+            if (selectedActivities.length === 0) {
+                selectedLogEl.appendChild(emptyLogMsg);
+                return;
+            }
+
+            selectedActivities.forEach(act => {
+                const badge = document.createElement('div');
+                badge.className = 'bg-slate-800 border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm';
+                badge.innerHTML = `
+                    <span>${act.icon} ${act.name}</span>
+                    <span class="font-bold font-jua text-amber-400">+${act.co2}kg</span>
+                    <button class="text-slate-400 hover:text-rose-400 text-xs ml-1 font-bold">✕</button>
+                `;
+
+                badge.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleActivity(act);
+                });
+
+                selectedLogEl.appendChild(badge);
+            });
+        }
+
+        // Category Filter Button Handler
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('active-filter', 'bg-emerald-600', 'text-white');
+                    b.classList.add('bg-slate-700', 'text-slate-300');
+                });
+
+                e.target.classList.add('active-filter', 'bg-emerald-600', 'text-white');
+                e.target.classList.remove('bg-slate-700', 'text-slate-300');
+
+                currentFilter = e.target.getAttribute('data-filter');
+                renderActivities();
+            });
+        });
+
+        // Reset Button Handler
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            selectedActivities = [];
+            modalTriggered = false;
+            updateCalculator();
+            renderActivities();
+        });
+
+        document.getElementById('clear-all-btn').addEventListener('click', () => {
+            selectedActivities = [];
+            modalTriggered = false;
+            updateCalculator();
+            renderActivities();
+        });
+
+        // Modal Controls
+        function showModal() {
+            modalOverlay.classList.remove('hidden');
+        }
+
+        closeModalBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('hidden');
+        });
+
+        // Initialize App
+        window.onload = () => {
+            renderActivities();
+            updateCalculator();
+        };
+    </script>
+</body>
+</html>
